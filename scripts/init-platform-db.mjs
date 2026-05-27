@@ -31,6 +31,8 @@ const statements = [
   `ALTER TABLE app_users ADD COLUMN IF NOT EXISTS avatar_char TEXT NOT NULL DEFAULT '漫'`,
   `ALTER TABLE app_users ADD COLUMN IF NOT EXISTS prefs JSONB NOT NULL DEFAULT '{}'::jsonb`,
   `ALTER TABLE app_users ADD COLUMN IF NOT EXISTS plan_expires_at BIGINT`,
+  // 访问密码 (scrypt 哈希, 格式 scrypt$salt$hash); null = 未设密码(未激活)
+  `ALTER TABLE app_users ADD COLUMN IF NOT EXISTS password_hash TEXT`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_app_users_device_id ON app_users(device_id)`,
 
   `CREATE TABLE IF NOT EXISTS stories (

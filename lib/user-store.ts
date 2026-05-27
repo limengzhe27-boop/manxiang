@@ -9,6 +9,22 @@
  */
 
 import { sql } from './db';
+import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+
+// ===== 密码哈希 (scrypt) =====
+function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString('hex');
+  const hash = scryptSync(password, salt, 64).toString('hex');
+  return `scrypt$${salt}$${hash}`;
+}
+function verifyPasswordHash(password: string, stored: string): boolean {
+  const parts = stored.split('$');
+  if (parts.length !== 3 || parts[0] !== 'scrypt') return false;
+  const [, salt, hash] = parts;
+  const calc = scryptSync(password, salt, 64);
+  const expected = Buffer.from(hash, 'hex');
+  return calc.length === expected.length && timingSafeEqual(calc, expected);
+}
 
 export type UserPrefs = {
   generationDone: boolean;
@@ -38,6 +54,8 @@ export type UserProfile = {
   email: string;
   plan: 'free' | 'pro';
   planExpiresAt: number | null;
+  /** 是否已设访问密码 (激活); 未激活时账号页引导注册 */
+  activated: boolean;
   prefs: UserPrefs;
   credits: {
     freeDailyLimit: number;
@@ -66,6 +84,7 @@ type UserRow = {
   plan: string;
   plan_expires_at: number | null;
   prefs: Partial<UserPrefs> | null;
+  password_hash: string | null;
 };
 
 type CreditRow = {
@@ -119,6 +138,7 @@ function rowToProfile(row: UserRow, credits: UserProfile['credits']): UserProfil
     email: row.email || '',
     plan: row.plan === 'pro' ? 'pro' : 'free',
     planExpiresAt: row.plan_expires_at,
+    activated: !!row.password_hash,
     prefs: { ...DEFAULT_PREFS, ...(row.prefs || {}) },
     credits
   };
@@ -129,7 +149,7 @@ export async function getOrCreateUserByDevice(deviceId: string): Promise<UserPro
   if (!sql) throw new Error('DATABASE_URL 未配置');
 
   const found = (await sql`
-    SELECT id, nickname, avatar_char, phone, email, plan, plan_expires_at, prefs
+    SELECT id, nickname, avatar_char, phone, email, plan, plan_expires_at, prefs, password_hash
     FROM app_users WHERE device_id = ${deviceId} LIMIT 1
   `) as UserRow[];
 
@@ -148,7 +168,7 @@ export async function getOrCreateUserByDevice(deviceId: string): Promise<UserPro
   `;
   // 并发兜底: 再查一次 (可能别的请求已插入)
   const again = (await sql`
-    SELECT id, nickname, avatar_char, phone, email, plan, plan_expires_at, prefs
+    SELECT id, nickname, avatar_char, phone, email, plan, plan_expires_at, prefs, password_hash
     FROM app_users WHERE device_id = ${deviceId} LIMIT 1
   `) as UserRow[];
   const credits = await readCredits(again[0].id);
@@ -286,6 +306,24 @@ export async function consumeQuota(userId: string): Promise<QuotaCheck> {
     remainingFree: 0,
     bonusCredits: credits.bonusCredits
   };
+}
+
+/** 设置 / 修改访问密码 (注册激活 或 改密) */
+export async function setUserPassword(userId: string, password: string): Promise<void> {
+  if (!sql) throw new Error('DATABASE_URL 未配置');
+  const hash = hashPassword(password);
+  await sql`UPDATE app_users SET password_hash = ${hash}, updated_at = ${Date.now()} WHERE id = ${userId}`;
+}
+
+/** 校验 deviceId 账号的密码 */
+export async function verifyUserPassword(deviceId: string, password: string): Promise<boolean> {
+  if (!sql) throw new Error('DATABASE_URL 未配置');
+  const rows = (await sql`
+    SELECT password_hash FROM app_users WHERE device_id = ${deviceId} LIMIT 1
+  `) as Array<{ password_hash: string | null }>;
+  const stored = rows[0]?.password_hash;
+  if (!stored) return false;
+  return verifyPasswordHash(password, stored);
 }
 
 /** 注销账号: 删除用户及关联数据 (usage_credits / credit_transactions 走 CASCADE) */

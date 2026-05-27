@@ -23,7 +23,8 @@ import { Topbar } from '@/components/Topbar';
 import { Footer } from '@/components/Footer';
 import { PanelArt } from '@/components/PanelArt';
 import { Magnet } from '@/components/Magnet';
-import { apiFetch } from '@/lib/identity';
+import { apiFetch, isAuthed } from '@/lib/identity';
+import { useRouter } from 'next/navigation';
 
 const TABS = [
   { key: 'all', label: '全部故事' },
@@ -102,10 +103,16 @@ function normalizeStory(story: ApiStory): LibraryStory {
 }
 
 export default function LibraryPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<(typeof TABS)[number]['key']>('all');
   const [stories, setStories] = useState<LibraryStory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // 登录守卫
+  useEffect(() => {
+    if (!isAuthed()) router.replace('/auth?next=/library');
+  }, [router]);
 
   const loadStories = async () => {
     setLoading(true);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   Bell,
@@ -19,7 +19,7 @@ import { Footer } from '@/components/Footer';
 import { Reveal } from '@/components/Reveal';
 import { Magnet } from '@/components/Magnet';
 import { Modal } from '@/components/Modal';
-import { apiFetch, getDeviceId } from '@/lib/identity';
+import { apiFetch, getDeviceId, isAuthed, clearAuthed } from '@/lib/identity';
 
 const NAV = [
   { key: 'profile', label: '账号资料', icon: User },
@@ -132,6 +132,15 @@ export function SettingsView() {
     setUsedToday(u.credits.freeUsedToday);
   };
 
+  const router = useRouter();
+
+  // 登录守卫: 未登录 → 跳 /auth
+  useEffect(() => {
+    if (!isAuthed()) {
+      router.replace('/auth?next=/settings');
+    }
+  }, [router]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -228,15 +237,11 @@ export function SettingsView() {
     }
   };
 
-  // 登出: 清除本机匿名身份, 下次访问生成全新身份
+  // 登出: 只清登录态, 保留账号数据 (下次输密码即可重新进入)
   const logout = () => {
-    try {
-      window.localStorage.removeItem('manxiang_device_id');
-    } catch {
-      /* 忽略 */
-    }
-    notify('已登出，正在刷新…');
-    window.setTimeout(() => (window.location.href = '/'), 900);
+    clearAuthed();
+    notify('已登出…');
+    window.setTimeout(() => (window.location.href = '/auth?next=/settings'), 800);
   };
 
   // 注销: 真删账号数据 + 清身份
@@ -247,6 +252,7 @@ export function SettingsView() {
       /* 即使失败也清本地身份 */
     }
     try {
+      clearAuthed();
       window.localStorage.removeItem('manxiang_device_id');
     } catch {
       /* 忽略 */
