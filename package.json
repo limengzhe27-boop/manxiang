@@ -1,0 +1,36 @@
+{
+  "name": "manxiang-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "gen-seeds": "node scripts/gen-seed-images.mjs",
+    "gen-seeds:force": "node scripts/gen-seed-images.mjs --force",
+    "gen-showcase": "node scripts/gen-showcase-images.mjs",
+    "gen-showcase:force": "node scripts/gen-showcase-images.mjs --force"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "clsx": "^2.1.1",
+    "framer-motion": "^11.3.19",
+    "html-to-image": "^1.11.13",
+    "lucide-react": "^0.414.0",
+    "next": "14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.13",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.19",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.5",
+    "postcss": "^8.4.40",
+    "tailwindcss": "^3.4.7",
+    "typescript": "^5.5.4"
+  }
+}

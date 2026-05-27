@@ -1,0 +1,300 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 中文字体 优先用系统字体 不阻塞 不依赖 Google Fonts
+   Mac: Songti SC / PingFang SC
+   Win: SimSun / Microsoft YaHei
+   HarmonyOS Sans 是国行机自带 */
+:root {
+  --font-serif: "Songti SC", "STSong", "Noto Serif SC", "SimSun", serif;
+  --font-sans: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", Consolas, Monaco, "Menlo", monospace;
+
+  --bg: #FAF6EE;
+  --bg-warm: #F3ECDC;
+  --surface: #FFFFFF;
+  --surface-alt: #E8DCC4;
+  --surface-hover: #F0E8D5;
+
+  --border: #1A1614;
+  --border-soft: #C9BFA8;
+  --border-hover: #C0392B;
+
+  --ink: #1A1614;
+  --ink-secondary: #4A4540;
+  --ink-tertiary: #8A8275;
+  --ink-on-red: #FAF6EE;
+
+  --red: #C0392B;
+  --red-hover: #A12E22;
+  --red-soft: #F4DDD8;
+
+  --indigo: #2C3E50;
+  --indigo-soft: #DCE3E8;
+
+  --bg-rgb: 250, 246, 238;
+  --ink-rgb: 26, 22, 20;
+  --red-rgb: 192, 57, 43;
+
+  --success: #6B8E4E;
+  --warning: #C79B3A;
+  --error: #C0392B;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans), 'Noto Sans SC', system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  position: relative;
+  min-height: 100vh;
+}
+
+/* 纸张颗粒底噪 全局氛围层 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.06;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 0 0.07 0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+main, header, footer, section, article, div, nav {
+  position: relative;
+  z-index: 2;
+}
+
+::selection {
+  background: var(--red);
+  color: var(--ink-on-red);
+}
+
+/* ============ Components ============ */
+
+@layer components {
+
+  .container-page {
+    @apply mx-auto w-full max-w-container px-5 md:px-8;
+  }
+  .container-wide {
+    @apply mx-auto w-full max-w-wide px-5 md:px-8;
+  }
+  .container-narrow {
+    @apply mx-auto w-full max-w-narrow px-5 md:px-8;
+  }
+
+  /* === Buttons === */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded font-medium text-[15px] tracking-wider;
+    background: var(--red);
+    color: var(--ink-on-red);
+    border: 1.5px solid var(--ink);
+    box-shadow: 4px 4px 0 0 var(--ink);
+    transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s cubic-bezier(.2,.8,.2,1);
+  }
+  .btn-primary:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 0 var(--ink);
+  }
+  .btn-primary:active {
+    transform: translate(2px, 2px);
+    box-shadow: 0 0 0 0 var(--ink);
+  }
+  .btn-primary:focus-visible {
+    outline: 2px solid var(--indigo);
+    outline-offset: 4px;
+  }
+  .btn-primary:disabled {
+    background: var(--surface-alt);
+    color: var(--ink-tertiary);
+    box-shadow: 2px 2px 0 0 var(--border-soft);
+    transform: none;
+    cursor: not-allowed;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded font-medium text-[15px] tracking-wider;
+    background: transparent;
+    color: var(--ink);
+    border: 1.5px solid var(--ink);
+    transition: background .18s, color .18s;
+  }
+  .btn-ghost:hover { background: var(--ink); color: var(--bg); }
+  .btn-ghost:focus-visible { outline: 2px solid var(--indigo); outline-offset: 4px; }
+
+  .btn-text {
+    @apply inline-flex items-center gap-1 text-sm font-medium;
+    color: var(--ink);
+    border-bottom: 1px solid var(--ink);
+    padding-bottom: 2px;
+    transition: color .15s, border-color .15s;
+  }
+  .btn-text:hover { color: var(--red); border-bottom-color: var(--red); }
+
+  /* === Cards / Surfaces === */
+  .card-flat {
+    @apply rounded-md;
+    background: var(--surface);
+    border: 1.5px solid var(--ink);
+  }
+
+  /* === Tags === */
+  .tag {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium uppercase;
+    letter-spacing: 0.12em;
+    border: 1px solid var(--ink);
+    border-radius: 2px;
+    background: var(--bg);
+  }
+  .tag--red { background: var(--red); color: var(--ink-on-red); border-color: var(--red); }
+  .tag--success { background: var(--success); color: var(--bg); border-color: var(--success); }
+  .tag--ghost { background: transparent; }
+
+  /* === Section Heading 章节符 === */
+  .h2-mark {
+    @apply font-serif font-bold;
+    position: relative;
+    padding-left: 18px;
+    font-size: clamp(28px, 4vw, 48px);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .h2-mark::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0.15em;
+    width: 4px; height: 0.85em;
+    background: var(--ink);
+  }
+
+  /* === Stamp Word 朱砂印章关键词 === */
+  .stamp-word {
+    display: inline-block;
+    color: var(--red);
+    border: 2px solid var(--red);
+    padding: 0 0.18em;
+    transform: rotate(-2deg);
+    background: var(--bg);
+    margin: 0 0.1em;
+  }
+
+  /* === Highlight 荧光笔 === */
+  .hl {
+    background: linear-gradient(transparent 58%, var(--surface-alt) 58%);
+    padding: 0 0.05em;
+  }
+
+  /* === Eyebrow 小标题 === */
+  .eyebrow {
+    @apply font-sans text-[12px] font-medium uppercase;
+    letter-spacing: 0.22em;
+    color: var(--ink-tertiary);
+  }
+
+  /* === Divider 墨线 === */
+  .divider-ink {
+    height: 1px;
+    background: var(--ink);
+  }
+  .divider-soft {
+    height: 1px;
+    background: var(--border-soft);
+  }
+}
+
+/* === Animations === */
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.caret {
+  display: inline-block;
+  width: 0.5em;
+  height: 1.05em;
+  vertical-align: -0.18em;
+  background: var(--ink);
+  margin-left: 2px;
+  animation: blink 0.9s steps(2) infinite;
+}
+
+@keyframes panel-stripes-shift {
+  0% { background-position: 0 0, 0 0; }
+  100% { background-position: 24px 24px, -24px 24px; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== 屏蔽浏览器扩展注入的浮标 =====
+   Yoast SEO / SEMrush / SimilarWeb / Detectify 等常驻悬浮 widget
+   会向所有页面注入 DOM, 与设计无关, 全局隐藏 */
+[id^="yoast"],
+[class*="yoast"],
+[id*="YoastSEO"],
+iframe[src*="yoast"],
+div[data-yoast],
+[id^="semrush"],
+[id^="similarweb"],
+#grammarly-extension {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* 故事种子卡 hover 折角变红 */
+.seed-card-link:hover .seed-fold {
+  background: linear-gradient(135deg, transparent 50%, var(--red) 50%) !important;
+  border-top-color: var(--red) !important;
+  border-left-color: var(--red) !important;
+}
+
+/* 随机种子高亮抖动 */
+@keyframes seed-flash {
+  0%, 100% { transform: translateY(0); box-shadow: none; }
+  20% { transform: translateY(-6px); box-shadow: 0 0 0 3px var(--red), 6px 6px 0 0 var(--ink); }
+  40% { transform: translateY(0) translateX(-2px); }
+  60% { transform: translateY(-3px) translateX(2px); box-shadow: 0 0 0 2px var(--red); }
+}
+.seed-flash > a, .seed-flash > button {
+  animation: seed-flash 1.4s cubic-bezier(.2,.8,.2,1);
+}
+
+/* 创作页 2 格关键分镜 (CLIMAX + HOOK)
+   纵向上下堆叠, 每格 3:2, 让约 500 字正文和右侧视觉高度更匹配 */
+.panel-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 1fr;
+}
+.panel-img-area { aspect-ratio: 3 / 2; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .caret { animation: none; opacity: 1; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb {
+  background: var(--border-soft);
+  border: 2px solid var(--bg);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--ink); }
