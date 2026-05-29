@@ -18,7 +18,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { generateChapter, type CharacterProfile } from '@/lib/deepseek';
-import { generateImages } from '@/lib/siliconflow';
+// generateImages 已移到 /chapters/[no]/panels/[i]/image (Vercel Hobby 10s 拆分方案)
 import {
   SYSTEM_PROMPT_FIRST,
   SYSTEM_PROMPT_NEXT,
@@ -29,15 +29,12 @@ import {
   getStory,
   appendChapter,
   recordChoice,
-  updatePanelImage,
   addCharacters,
   getCharacters
 } from '@/lib/store';
 import { detectPoliticalFigure, buildSafetyMessage } from '@/lib/safety';
 import { getOrCreateUserByDevice, consumeQuota, CREDITS_PER_CHAPTER } from '@/lib/user-store';
-import { storeImageFromUrl } from '@/lib/image-store';
 import { checkGenerateLimit, clientIp } from '@/lib/rate-limit';
-import { waitUntil } from '@vercel/functions';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -172,40 +169,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: '故事已被清除' }, { status: 404 });
     }
 
-    // 6. 拿到 story 完整 characters (含 seed) 后台异步生成图
-    //    把 panel.caption (中文动作描述) 也合并进 prompt 增强细节匹配度
-    const allCharacters = await getCharacters(story.id);
-    const prompts = chapter.panels.map((p) => {
-      // caption 是中文, 模型理解度有限, 但加上有助于"提示动作主体"
-      const captionHint = p.caption ? ` Key moment: ${p.caption}.` : '';
-      return p.prompt + captionHint;
-    });
-    const chapterNo = stored.no;
-    // 用 waitUntil 包裹后台任务: 在 Vercel serverless 上,
-    // 不这么做的话, 函数 return 后实例会被立即回收, 后台 .then 不会执行 (图永远不出现)
-    waitUntil(
-      (async () => {
-        try {
-          const urls = await generateImages(prompts, allCharacters);
-          // 把临时 URL 转存为永久 URL (避免 1 小时过期), 转存失败则退回临时 URL
-          const permanent = await Promise.all(
-            urls.map(async (url) => {
-              if (!url) return null;
-              const saved = await storeImageFromUrl(url);
-              return saved ?? url;
-            })
-          );
-          await Promise.all(
-            permanent.map((url, i) => updatePanelImage(story.id, chapterNo, i, url))
-          );
-          console.log(
-            `[chapters] story ${story.id} ch ${chapterNo} 图像就绪(已转存): ${permanent.filter(Boolean).length}/2`
-          );
-        } catch (err) {
-          console.error('[chapters] 图像生成失败 (整批):', err);
-        }
-      })()
-    );
+    // 6. 章节生成完毕, 不在本路由生成图 (Vercel Hobby 10s 限制).
+    //    前端拿到章节后, 会对每张分镜单独调 POST /api/stories/:id/chapters/:no/panels/:i/image
+    //    每张图独立请求 = 独立 serverless 实例, 每个都能在 10s 内跑完.
 
     // 7. 生成成功, 扣额度
     const r = await consumeQuota(quotaUserId);

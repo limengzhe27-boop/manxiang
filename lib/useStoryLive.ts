@@ -74,6 +74,42 @@ type StoryLive = {
   generateNext: (choice?: { emotion: string; text: string }) => void;
 };
 
+/**
+ * 触发单张分镜图生成 (带重试)
+ * 成功后服务端会写库, 前端轮询会拿到新 imageUrl
+ */
+async function generatePanelImage(
+  storyId: string,
+  chapterNo: number,
+  panelIndex: number,
+  attempt = 1
+): Promise<void> {
+  const MAX_ATTEMPTS = 2;
+  try {
+    const res = await apiFetch(
+      `/api/stories/${storyId}/chapters/${chapterNo}/panels/${panelIndex}/image`,
+      { method: 'POST' }
+    );
+    if (res.status === 429) return; // 限流, 不重试 (避免恶性循环)
+    if (!res.ok) {
+      if (attempt < MAX_ATTEMPTS) {
+        console.warn(`[manxiang] 图${panelIndex + 1}失败 重试 ${attempt + 1}/${MAX_ATTEMPTS}`);
+        await new Promise((r) => setTimeout(r, 1500));
+        return generatePanelImage(storyId, chapterNo, panelIndex, attempt + 1);
+      }
+      console.error(`[manxiang] 图${panelIndex + 1} 最终失败`);
+      return;
+    }
+    console.log(`[manxiang] ✅ 图${panelIndex + 1}就绪`);
+  } catch (err) {
+    if (attempt < MAX_ATTEMPTS) {
+      await new Promise((r) => setTimeout(r, 1500));
+      return generatePanelImage(storyId, chapterNo, panelIndex, attempt + 1);
+    }
+    console.error(`[manxiang] 图${panelIndex + 1} 异常:`, err);
+  }
+}
+
 export function useStoryLive(storyId: string | null): StoryLive {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,9 +145,14 @@ export function useStoryLive(storyId: string | null): StoryLive {
         if (data.quota) setQuota(data.quota as QuotaInfo);
         const ch = normalizeChapter(raw);
         setChapters((prev) => {
-          // 避免重复 push
           if (prev.some((c) => c.no === ch.no)) return prev;
           return [...prev, ch];
+        });
+
+        // 章节文字已就位 → 并行触发每张分镜的图片生成 (每张图独立 serverless 实例)
+        const chapterNo = ch.no;
+        ch.panels.forEach((_, panelIndex) => {
+          void generatePanelImage(id, chapterNo, panelIndex);
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : '生成失败';
@@ -144,6 +185,15 @@ export function useStoryLive(storyId: string | null): StoryLive {
         );
         const existing = (data.chapters as RawApiChapter[]).map(normalizeChapter);
         setChapters(existing);
+        // 兜底: 对 imageUrl 仍为 null/undefined 的 panel 重新触发生成
+        // (覆盖"刷新页面时上一次未完成"的场景)
+        for (const ch of existing) {
+          ch.panels.forEach((p, i) => {
+            if (!p.imageUrl) {
+              void generatePanelImage(storyId, ch.no, i);
+            }
+          });
+        }
         if (existing.length === 0) {
           // 触发首话生成 ( generateChapter 会自己设 loading )
           await generateChapter(storyId);
