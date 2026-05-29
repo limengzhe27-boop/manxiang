@@ -99,6 +99,23 @@ const statements = [
     UNIQUE(story_id, chapter_no, panel_index)
   )`,
 
+  // 邮箱验证码 (用于绑定邮箱 / 找回密码)
+  //   purpose: 'bind' (绑邮箱) | 'reset' (找回密码)
+  //   email: 验证码发去的邮箱
+  //   code: 6 位数字 (明文存, 短时效, 一次性使用)
+  //   user_id: 当前请求的用户 (登录态下)
+  `CREATE TABLE IF NOT EXISTS email_codes (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL,
+    purpose TEXT NOT NULL,
+    code TEXT NOT NULL,
+    user_id TEXT,
+    expires_at BIGINT NOT NULL,
+    used BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at BIGINT NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_email_codes_email_purpose ON email_codes(email, purpose, created_at DESC)`,
+
   // 防刷: 限流计数 (按 bucket 维度的固定时间窗计数)
   //   bucket 形如  ip:1.2.3.4:gen:min  / ip:1.2.3.4:gen:day  / global:gen:day
   `CREATE TABLE IF NOT EXISTS rate_limits (

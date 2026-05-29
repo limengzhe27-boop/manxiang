@@ -13,6 +13,9 @@
     "gen-showcase:force": "node scripts/gen-showcase-images.mjs --force"
   },
   "dependencies": {
+    "@alicloud/dm20151123": "^1.10.0",
+    "@alicloud/openapi-client": "^0.4.15",
+    "@alicloud/tea-util": "^1.4.11",
     "@neondatabase/serverless": "^1.1.0",
     "clsx": "^2.1.1",
     "framer-motion": "^11.3.19",

@@ -37,9 +37,12 @@ import { detectPoliticalFigure, buildSafetyMessage } from '@/lib/safety';
 import { getOrCreateUserByDevice, consumeQuota, CREDITS_PER_CHAPTER } from '@/lib/user-store';
 import { storeImageFromUrl } from '@/lib/image-store';
 import { checkGenerateLimit, clientIp } from '@/lib/rate-limit';
+import { waitUntil } from '@vercel/functions';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// Vercel Pro/Enterprise 可达 60s/900s, Hobby 上限 10s (装着不会出错, 只是不会超过上限)
+export const maxDuration = 60;
 
 type Body = { choice?: { emotion: string; text: string } };
 
@@ -178,26 +181,31 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return p.prompt + captionHint;
     });
     const chapterNo = stored.no;
-    generateImages(prompts, allCharacters)
-      .then(async (urls) => {
-        // 把临时 URL 转存为永久 URL (避免 1 小时过期), 转存失败则退回临时 URL
-        const permanent = await Promise.all(
-          urls.map(async (url) => {
-            if (!url) return null;
-            const saved = await storeImageFromUrl(url);
-            return saved ?? url;
-          })
-        );
-        await Promise.all(
-          permanent.map((url, i) => updatePanelImage(story.id, chapterNo, i, url))
-        );
-        console.log(
-          `[chapters] story ${story.id} ch ${chapterNo} 图像就绪(已转存): ${permanent.filter(Boolean).length}/2`
-        );
-      })
-      .catch((err) => {
-        console.error('[chapters] 图像生成失败 (整批):', err);
-      });
+    // 用 waitUntil 包裹后台任务: 在 Vercel serverless 上,
+    // 不这么做的话, 函数 return 后实例会被立即回收, 后台 .then 不会执行 (图永远不出现)
+    waitUntil(
+      (async () => {
+        try {
+          const urls = await generateImages(prompts, allCharacters);
+          // 把临时 URL 转存为永久 URL (避免 1 小时过期), 转存失败则退回临时 URL
+          const permanent = await Promise.all(
+            urls.map(async (url) => {
+              if (!url) return null;
+              const saved = await storeImageFromUrl(url);
+              return saved ?? url;
+            })
+          );
+          await Promise.all(
+            permanent.map((url, i) => updatePanelImage(story.id, chapterNo, i, url))
+          );
+          console.log(
+            `[chapters] story ${story.id} ch ${chapterNo} 图像就绪(已转存): ${permanent.filter(Boolean).length}/2`
+          );
+        } catch (err) {
+          console.error('[chapters] 图像生成失败 (整批):', err);
+        }
+      })()
+    );
 
     // 7. 生成成功, 扣额度
     const r = await consumeQuota(quotaUserId);
